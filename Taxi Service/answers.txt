@@ -1,0 +1,324 @@
+-----------------------------------------------------------------------
+ ------ Informatics 2D - 2015/16 - Second Assignment - Planning ------
+-----------------------------------------------------------------------
+ 
+ Write here you matriculation number (only - your name is not needed)
+ Matriculation Number: s1509922
+ 
+1.1 a)
+ We can use a eternal predicate to show from which to which location can be passed
+   Passage(loc1,loc2) - Objects can pass from loc1 to loc2
+
+ Atemporal predicates:
+   Taxi(object) - Object is a taxi
+   Passenger(object) - Object is a passenger
+
+ Fluents:
+   Holding(object,s) - Agent holds Object at situation s
+   Arrived(object,s) - Object has arrived at destination.
+
+1.1 b)
+ At(o,loc,s) to be true when object(o) is at location(loc) at given situation (s). 
+ - For the agent(Agent) we will have At(Agent,loc,s)
+ - For the passenger(P) we will have At(P,loc,s)
+
+
+1.1 c)
+ - If we have only 1 passenger we can simply have Destination(location).
+ - As our problem can include many passengers and destinations we can use ReqDest(passenger,location):
+   ReqDest(passenger,location)
+
+1.1 d)
+ - Initial state:
+ Taxi(Agent) and Passanger(P) and ReqDest(P,Ld) and At(Agent,La,S0)
+ and At(P,Lp,S0) and Passage(E,F) and Passage(F,C) and Passage (F,E)
+ and Passage(C,B) and Passage(B,A) and Passage(B,C) and Passage (A,G)
+ and Passage(A,B) and Passage(G,H) and Passage(H,D) and Passage(H,F) 
+ and Passage(H,G) and Passage(D,B)
+
+Everything that is not in the KB is false
+Example: Holding(P,S0)
+
+1.2 a) Move will be an action taken only by the agent, a passenger cannot move.
+  Action(Move(from,to),
+    Precondition: At(Agent,from,s) and Passage(from,to) => Poss(Move(from,to),s)
+    Effect: Poss(Move(from,to),s) => At(Agent,to,Result(Move(from,to),s)) )
+
+1.2 b) Picking up is done by our agent who is the only taxi.
+  Action(PickUp(obj),
+    Precondition: At(Agent,loc,s) and At(obj,loc,s) and Passenger(obj) 
+                   and (not Arrived(obj,s)) => Poss(PickUp(obj),s)
+    Effect: Poss(PickUp(obj),s) => not At(obj,loc,Result(PickUp(obj),s)) and Holding(obj,Result(PickUp(obj),s)) )
+
+1.2 c) Same goes for dropping a passenger and transporting it.
+  Action(Drop(obj),
+    Precondition: At(Agent,loc,s) and ReqDest(obj,loc) and Holding(obj,s) => Poss(Drop(obj),s)
+    Effect: Poss(Drop(obj),s) => (not Holding(obj,Result(Drop(obj),s))) and At(obj,loc,Result(Drop(obj),s))
+
+1.2 d) 
+  Action(Transport(obj),
+   Precondition: At(Agent,loc,s) and ReqDest(obj,loc) and At(obj,loc,s) => Poss(Transport(obj),s)
+   Effect: Poss(Transport(obj),s) => Arrived(obj,Result(Transport(obj),s)) )
+
+For the passenger to arrive at the right location, without counting the move action, a taxi must
+take 3 whole actions (PickUp,Drop,Transport), which leads to plans longer than 15 steps for later
+problems where we have 3 passengers.
+
+1.2 e)
+   This problem is known as the frame problem. Effect axioms do specify what changes after an action.
+   They do not specify if everything else stays the same. One way is to write frame axioms that say what
+   stays the same, however this creates the inferential frame problem. Another way is to use Successor-state axioms.
+   
+   STRIPS (PDDL) assumes that if specific element is not changed by the axiom it stays the same. PDDL introduces a 
+   set of statements that is added after the action (ADD list) and set of statements that are deleted in the current
+   state (DEL list). After an action the KB has all things that changed and all that did not.
+
+1.2 f)
+  Poss(a,s) => At(obj,to,Result(a,s)) <=> (Taxi(obj) and a = Move(from,to)) or
+                                          (Taxi(obj) and At(obj,to,s) and a /= Move(from,to)) or
+                                          (Passenger(obj) and a = Drop(obj) and ReqDest(obj,to)) or
+                                          (Passenger(obj) and At(obj,to,s) and a /= PickUp(obj))
+
+  Poss(a,s) => Holding(obj,Result(a,s)) <=> a = PickUp(obj) or
+                                                (Holding(obj,s) and a /= Drop(obj))
+
+  Poss(a,s) => Arrived(obj,Result(a,s)) <=> (Passenger(obj) and ReqDest(obj,to) and At(obj,to,s) and a = Transport(obj)) or
+                                            (Passenger(obj) and Arrived(obj,s))
+
+1.3
+
+New initial state:
+
+(0) 
+ Taxi(Agent) and Passanger(P) and ReqDest(P,H) and At(Agent,A,S0)
+ and At(P,A,S0) and Passage(E,F) and Passage(F,C) and Passage (F,E)
+ and Passage(C,B) and Passage(B,A) and Passage(B,C) and Passage (A,G)
+ and Passage(A,B) and Passage(G,H) and Passage(H,D) and Passage(H,F) 
+ and Passage(H,G) and Passage(D,B)
+
+Actions in CNF:
+
+(1) Move:
+ not(At(Agent,from,s)) or not(Passage(from,to)) or Poss(Move(from,to),s)
+
+(2) PickUp:
+ not(At(Agent,loc,s)) or not(At(obj,loc,s)) or  not(Passenger(obj)) or Arrived(obj,s) or Poss(PickUp(obj),s)
+
+(3) Drop:
+ not(At(Agent,loc,s)) or not(ReqDest(obj,loc)) or not(Holding(obj,s)) or Poss(Drop(obj),s)
+
+(4) Transport:
+ not(At(Agent,loc,s)) or not(ReqDest(obj,loc)) or not(At(obj,loc,s)) or Poss(Transport(obj),s)
+
+Successor-state axioms in CNF:
+
+(5) At:
+ (not(Poss(a,s)) or not(At(obj,to,Result(a,s))) or At(obj,to,s) or a=Drop(obj) or a=Move(from,to))
+AND
+ (not(Poss(a,s)) or not(At(obj,to,Result(a,s))) or At(obj,to,s) or a=Drop(obj) or Taxi(obj))
+AND
+ (not(Poss(a,s)) or not(At(obj,to,Result(a,s))) or At(obj,to,s) or Passenger(obj) or a=Move(from,to))
+AND
+ (not(Poss(a,s)) or not(At(obj,to,Result(a,s))) or not(a=PickUp(obj)) or a=Drop(obj) or Taxi(obj))
+AND
+ (not(Poss(a,s)) or not(At(obj,to,Result(a,s))) or Passenger(obj) or Taxi(obj))
+AND
+ (not(Poss(a,s)) or not(At(obj,to,Result(a,s))) or At(obj,to,s) or a=Move(from,to) or ReqDest(obj,to))
+AND
+ (not(Poss(a,s)) or not(At(obj,to,Result(a,s))) or At(obj,to,s) or ReqDest(obj,to) or Taxi(obj))
+AND
+ (not(Poss(a,s)) or not(At(obj,to,Result(a,s))) or not(a=PickUp(obj)) or ReqDest(obj,to) or Taxi(obj))
+AND
+ (not(Poss(a,s)) or At(obj,to,Result(a,s)) or not(At(obj,to,s)) or a=PickUp(obj) or not(Passenger(obj)))
+AND
+ (not(Poss(a,s)) or At(obj,to,Result(a,s)) or not(At(obj,to,s)) or not(Taxi(obj)))
+AND
+ (not(Poss(a,s)) or At(obj,to,Result(a,s)) or not(a=Drop(obj)) or not(Passenger(obj)) or not(ReqDest(obj,to)))
+AND
+ (not(Poss(a,s)) or At(obj,to,Result(a,s)) or not(a=Move(from,to)) or not(Taxi(obj)))
+
+(6) Holding:
+ (not(Poss(a,s)) or Holding(obj,Result(a,s)) or not(a=PickUp(obj))
+AND
+ (not(Poss(a,s)) or not(Holding(obj,Result(a,s)) or a=PickUp(obj) or Holding(obj,s))
+AND
+ (not(Poss(a,s)) or not(Holding(obj,Result(a,s)) or a=PickUp(obj) or not(a=Drop(obj)))
+AND
+ (not(Poss(a,s)) or Holding(obj,Result(a,s)) or not(Holding(obj,s)) or a=Drop(obj))
+
+(7) Arrived:
+ (not(Poss(a,s)) or not(Arrived(obj,Result(a,s))) or Passenger(obj))
+AND
+ (not(Poss(a,s)) or not(Arrived(obj,Result(a,s))) or Arrived(obj,s) or ReqDest(obj,to))
+AND
+ (not(Poss(a,s)) or not(Arrived(obj,Result(a,s))) or Arrived(obj,s) or a=Transport(obj))
+AND
+ (not(Poss(a,s)) or not(Arrived(obj,Result(a,s))) or Arrived(obj,s) or At(obj,to,s))
+AND
+ (not(Poss(a,s)) or Arrived(obj,Result(a,s)) or not(Passenger(obj)) or not(ReqDest(obj,to)) or not(a=Transport(obj)) or not(At(obj,to,s)))
+AND
+ (not(Poss(a,s)) or Arrived(obj,Result(a,s)) or not(Passenger(obj)) or not(Arrived(obj,s)))
+
+
+Resolution:
+
+PLAN STEP 1:
+First we use axiom of (2)PickUp: not(At(Agent,loc,s)) or not(At(obj,loc,s)) or  not(Passenger(obj)) or Arrived(obj,s) or Poss(PickUp(obj),s)
+With   : At(Agent,A,S0)
+We get : not(At(obj,A,S0)) or not(Passenger(obj)) or Arrived(obj,S0) or Poss(PickUp(obj),S0)
+With   : Passenger(P)
+We get : not(At(P,A,S0)) or Arrived(P,S0) or Poss(PickUp(P),S0)
+With   : At(P,A,S0)
+We get : Arrived(P,S0) or Poss(PickUp(P),S0)
+As we do not have Arrived(P,S0) in KB -> it is false
+We get : Poss(PickUp(P),S0)
+DERIVED: Poss(PickUp(P),S0)
+
+
+Use of successor-state axiom (SS-axiom) (6)Holding : (not(Poss(a,s)) or Holding(obj,Result(a,s)) or not(a=PickUp(obj)))
+With   : Poss(PickUP(P),S0)
+We get : Holding(obj,Result(PickUp(P),S0)) or not(PickUp(P)=PickUp(obj))
+With   : obj = P
+We get : Holding(P,Result(PickUp(P),S0))
+DERIVED: Holding(P,Result(PickUp(P),S0))
+
+
+Use of SS-axiom (5)At: (not(Poss(a,s)) or At(obj,to,Result(a,s)) or not(At(obj,to,s)) or not(Taxi(obj)))
+With   : Poss(PickUp(P),S0)
+We get : At(obj,to,Result(PickUp(P),S0)) or not(At(obj,to,S0)) or not(Taxi(obj))
+With   : Taxi(Agent)
+We get : At(Agent,to,Result(PickUp(P),S0)) or not(At(Agent,to,S0))
+With   : At(Agent,A,S0)
+We get : At(Agent,A,Result(PickUp(P),S0))
+DERIVED: At(Agent,A,Result(PickUp(P),S0))
+
+
+PLAN STEP 2:
+As calculating the plan on hand it was 5 step plan for the 2nd step we will use this rename for simplicity:
+RENAME: Result(PickUp(P),S0)) = S1
+We have:
+Holding(P,Result(PickUp(P),S0))  = Holding(P,S1)
+At(Agent,A,Result(PickUp(P),S0)) = At(Agent,A,S1)
+
+
+We use axiom (1)Move: not(At(Agent,from,s)) or not(Passage(from,to)) or Poss(Move(from,to),s)
+With   : At(Agent,A,S1)
+We get : not(Passage(A,to)) or Poss(Move(A,to),S1)
+With   : Passage(A,G)
+We get : Poss(Move(A,G),S1)
+DERIVED: Poss(Move(A,G),S1)
+
+
+We use SS-axiom (6)Holding: (not(Poss(a,s)) or Holding(obj,Result(a,s)) or not(Holding(obj,s)) or a=Drop(obj))
+With   : Poss(Move(A,G),S1)
+We get : Holding(obj,Result(Move(A,G),S1)) or not(Holding(obj,S1)) or Move(A,G)=Drop(obj)
+Then   : Holding(obj,Result(Move(A,G),S1)) or not(Holding(obj,S1))
+With   : Holding(P,S1)
+We get : Holding(P,Result(Move(A,G),S1))
+DERIVED: Holding(P,Result(Move(A,G),S1))
+
+
+We use SS-axiom for (5)At: (not(Poss(a,s)) or At(obj,to,Result(a,s)) or not(a=Move(from,to)) or not(Taxi(obj)))
+With   : Poss(Move(A,G),S1)
+We get : At(obj,to,Result(Move(A,G),S1)) or not(Move(A,G)=Move(from,to)) or not(Taxi(obj)
+Then   : At(obj,G,Result(Move(A,G),S1)) or not(Taxi(obj)
+With   : Taxi(Agent)
+We get : At(Agent,G,Result(Move(A,G),S1))
+DERIVED: At(Agent,G,Result(Move(A,G),S1))
+
+PLAN STEP 3:
+RENAME: Result(Move(A,G),S1) to S2
+Holding(P,Result(Move(A,G),S1))  = Holding(P,S2)
+At(Agent,G,Result(Move(A,G),S1)) = At(Agent,G,S2)
+
+
+We use axiom (1) Move: not(At(Agent,from,s)) or not(Passage(from,to)) or Poss(Move(from,to),s)
+With   : At(Agent,G,S2)
+We get : not(Passage(G,to)) or Poss(Move(G,to),S2)
+With   : Passage(G,H)
+We get : Poss(Move(G,H),S2)
+DERIVED: Poss(Move(G,H),S2)
+
+
+Like in step 2 we use same SS-axiom for Holding and At:
+DERIVED: Holding(P,Result(Move(G,H),S2))
+DERIVED: At(Agent,H,Result(Move(G,H),S2))
+
+
+PLAN STEP 4:
+RENAME: Result(Move(G,H),S2) to S3
+Holding(P,Result(Move(G,H),S2))  = Holding(P,S3)
+At(Agent,H,Result(Move(G,H),S2)) = At(Agent,H,S3)
+
+
+We use axiom(3) Drop: not(At(Agent,loc,s)) or not(ReqDest(obj,loc)) or not(Holding(obj,s)) or Poss(Drop(obj),s)
+With   : ReqDest(P,H)
+We get : not(At(Agent,H,s)) or not(Holding(P,s)) or Poss(Drop(P),s)
+With   : At(Agent,H,S3)
+We get : not(Holding(P,S3)) or Poss(Drop(P),S3)
+With   : Holding(P,S3)
+We get : Poss(Drop(P),S3)
+DERIVED: Poss(Drop(P),S3)
+
+
+We use SS-axiom (5) At: (not(Poss(a,s)) or At(obj,to,Result(a,s)) or not(At(obj,to,s)) or not(Taxi(obj)))
+With   : Poss(Drop(P),S3)
+We get : At(obj,to,Result(Drop(P),S3)) or not (At(obj,to,S3)) or not(Taxi(obj))
+With   : Taxi(Agent)
+We get : At(Agent,to,Result(Drop(P),S3)) or not(At(Agent,to,S3))
+With   : At(Agent,H,S3)
+We get : At(Agent,H,Result(Drop(P),S3))
+DERIVED: At(Agent,H,Result(Drop(P),S3))
+
+
+We use SS-axiom (5) At: (not(Poss(a,s)) or At(obj,to,Result(a,s)) or not(a=Drop(obj)) or not(Passenger(obj)) or not(ReqDest(obj,to)))
+With   : Poss(Drop(P),S3)
+We get : At(obj,to,Result(Drop(P),S3)) or not(Drop(P)=Drop(obj)) or not(Passenger(obj)) or not(ReqDest(obj,to))
+Then   : At(P,to,Result(Drop(P),S3)) or not(Passenger(P)) or not(ReqDest(P,to))
+With   : Passenger(P)
+We get : At(P,to,Result(Drop(P),S3)) or not(ReqDest(P,to))
+With   : ReqDest(P,H)
+We get : At(P,H,Result(Drop(P),S3))
+DERIVED: At(P,H,Result(Drop(P),S3))
+
+PLAN STEP 5:
+RENAME: Result(Drop(P),S3) = S4
+At(Agent,H,Result(Drop(P),S3)) = At(Agent,H,S4)
+At(P,H,Result(Drop(P),S3))     = At(P,H,S4)
+
+We use axiom (4) Transport: not(At(Agent,loc,s)) or not(ReqDest(obj,loc)) or not(At(obj,loc,s)) or Poss(Transport(obj),s)
+With   : At(Agent,H,S4)
+We get : not(ReqDest(obj,H)) or not(At(obj,H,S4)) or Poss(Transport(obj),S4)
+With   : At(P,H,S4)
+We get : not(ReqDest(P,H)) or Poss(Transport(P),S4)
+With   : ReqDest(P,H)
+We get : Poss(Transport(P),S4)
+DERIVED: Poss(Transport(P),S4)
+
+We use SS-axiom (7) Arrived: (not(Poss(a,s)) or Arrived(obj,Result(a,s)) or not(Passenger(obj)) or not(ReqDest(obj,to)) or not(a=Transport(obj)) or not(At(obj,to,s)))
+With   : Poss(Transport(P),S4)
+We get : Arrived(obj,Result(Transport(P),S4)) or not(Passenger(obj)) or not(ReqDest(obj,to)) or not(Transport(P)=Transport(obj)) or not(At(obj,to,S4))
+Then   : Arrived(P,Result(Transport(P),S4) or not(Passenger(P)) or not(ReqDest(P,to)) or not(At(P,to,S4))
+With   : Passenger(P)
+We get : Arrived(P,Result(Transport(P),S4) or not(ReqDest(P,to)) or not(At(P,to,S4))
+With   : ReqDest(P,H)
+We get : Arrived(P,Result(Transport(P),S4) or not(At(P,H,S4))
+With   : At(P,H,S4)
+We get : Arrived(P,Result(Transport(P),S4)
+
+RENAME : Result(Transport(P),S4) = S5
+Arrived(P,Result(Transport(P),S4) = Arrived(P,S5)
+With the negated goal: -Arrived(P,s) for s=S5
+We get : {} 
+Therefore, the goal can be reached with the plan:
+  1) PickUp(P)
+  2) Move(A,G)
+  3) Move(G,H)
+  4) Drop(P)
+  5) Transport(P)
+
+
+--------------------
+Answers to parts 2 and 3 should be included in the appropriate domain-*.pl and instance-*.pl files.
+
+
